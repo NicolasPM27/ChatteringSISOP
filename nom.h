@@ -1,5 +1,11 @@
-typedef  struct data {
-  char segundopipe[20];
-    int pid;
+#define TAMNOM 20
+typedef  struct datam {
+    char nombrePipeInicial[TAMNOM];
+    int numMaxUsuarios;
 
-} datap;
+} dataman;
+typedef struct datat {
+    char nombrePipeInicial[TAMNOM];
+    int idTalker;
+} datatalk;
+

@@ -1,6 +1,6 @@
-/* 
+/*
 Autor: M. Curiel
-funcion: Ilustra la creaci'on de pipe nominales. 
+funcion: Ilustra la creaci'on de pipe nominales.
 Nota: todas las llamadas al sistema no estan validadas. Siempre que puedan retornar error deben validarse
 */
 
@@ -14,92 +14,87 @@ Nota: todas las llamadas al sistema no estan validadas. Siempre que puedan retor
 #include <signal.h>
 #include "nom.h"
 
-
-#define TAMNOM 20
-
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 {
-  int  fd, fd1,  pid, n, cuantos,res,creado=0;
-  datap datos; 
-  int bann=0, banpipe=0; 
+   int fd, fd1, pid, n, cuantos, res, creado = 0;
+   dataman datosMan;
+   datatalk datosTalk;
+   int bann = 0, banpipe = 0;
    mode_t fifo_mode = S_IRUSR | S_IWUSR;
-      if(argc!=5){
-      printf("\nEstructura de la instrucción:  %s -n NumMaxUsuarios -p  NombrePipe\n",argv[0]);
-		exit(1);
-    }
-    for(int i=1;i<argc -1;i++){
-      if(strcmp(argv[i], "-n")==0){
-         if(atoi(argv[i+1])<=0){
+
+   //-------------------------------------------------Validación de argumentos---------------------------------------------------------
+   if (argc != 5)
+   {
+      printf("\nEstructura de la instrucción:  %s -n NumMaxUsuarios -p  NombrePipe\n", argv[0]);
+      exit(1);
+   }
+   for (int i = 1; i < argc - 1; i++)
+   {
+      if (strcmp(argv[i], "-n") == 0)
+      {
+         if (atoi(argv[i + 1]) <= 0)
+         {
             printf("\nEl número de usuarios debe ser mayor a cero\n");
             exit(1);
+         }
+         datosMan.numMaxUsuarios = atoi(argv[i + 1]);
+         bann = 1;
       }
-      bann=1;
-          /*
-      Asignación de id
-      */
-   }else if(strcmp(argv[i], "-p")==0){
-      if(strcmp(argv[i+1], "")==0){
-         printf("\nEl nombre del pipe no puede ser vacío\n");
-         exit(1);
+      else if (strcmp(argv[i], "-p") == 0)
+      {
+         if (strcmp(argv[i + 1], "") == 0)
+         {
+            printf("\nEl nombre del pipe no puede ser vacío\n");
+            exit(1);
+         }
+         else if (strlen(argv[i + 1]) > TAMNOM)
+         {
+            printf("\nEl nombre del pipe no puede ser mayor a %d caracteres\n", TAMNOM);
+            exit(1);
+         }
+         strcpy(datosMan.nombrePipeInicial, argv[i + 1]);
+         banpipe = 1;
       }
-      banpipe=1;
-         /*
-         Asignación de nombre pipe
-         */
-    }
-    }
-    if(bann==0 || banpipe==0){
-      printf("\nEstructura de la instrucción:  $./%s -n numMaxUsuarios -p  NombrePipe\n",argv[0]);
-      exit(1);
-    }
-  // Creacion del pipe inicial, el que se recibe como argumento del main
-  unlink(argv[1]);
-	      
-  if (mkfifo (argv[1], fifo_mode) == -1) {
-     perror("Server mkfifo:");
-     exit(1);
-  }
-   while(1){
-  // Abre el pipe. 
-  if ((fd = open (argv[1], O_RDONLY)) == -1) {
-        perror(" Servidor abriendo el pipe: ");
-        exit(1);
-
-  }
-  // El otro proceso (cliente) le envia el nombre para el nuevo pipe y el pid. 
-  cuantos = read (fd, &datos, sizeof(datos));
-  if (cuantos == -1) {
-     perror("proceso lector:");
-     exit(1);
-  }
-       
-   printf ("Server lee el string %s\n", datos.segundopipe);
-   printf ("Server el pid %d\n", datos.pid );
-   
    }
-
-
-   do { 
-      if ((fd1 = open(datos.segundopipe, O_WRONLY)) == -1) {
-         perror(" Server Abriendo el segundo pipe ");
-         printf(" Se volvera a intentar despues\n");
-         sleep(5); //los unicos sleeps que deben colocar son los que van en los ciclos para abrir los pipes que han creado o deben crear otros procesos         
-      } else creado = 1; 
-   }  while (creado == 0);
-
-
-    // Se escribe un mensaje para el  proceso (client)
+   if (bann == 0 || banpipe == 0)
+   {
+      printf("\nEstructura de la instrucción:  $./%s -n numMaxUsuarios -p  NombrePipe\n", argv[0]);
+      exit(1);
+   }
+   //-------------------------------------------------------------Inicio del programa----------------------------------------------
    
-   write(fd1, "hola", 5);
-   sleep(2);
-   kill(datos.pid, SIGUSR1);
+   // Creacion del pipe inicial, el que se recibe como argumento del main
+   unlink(datosMan.nombrePipeInicial);
+   if (mkfifo(datosMan.nombrePipeInicial, fifo_mode) == -1)
+   {
+      perror("Error creando el pipe por parte del manager");
+      exit(1);
+   }
+   printf("Creación del pipe '%s' exitosa con máximo %d Talkers\n", datosMan.nombrePipeInicial, datosMan.numMaxUsuarios);
 
-      
-   exit(0);
-
+   //Ciclo infinito para esperar a que se conecten los Talkers
+   while(1){
+   printf("Manager esperando a que se conecte un Talker\n");
+   // Se abre el pipe
+   if((fd=open(datosMan.nombrePipeInicial,O_RDONLY))==-1){
+      perror("Error del manager al abrir el pipe: ");
+      exit(1);
+   }
+   cuantos=read(fd,&datosTalk,sizeof(datosTalk));
+   if(cuantos==-1){
+      perror("Error del manager leyendo el pipe: ");
+      exit(1);
+   }
+      if(datosTalk.idTalker>datosMan.numMaxUsuarios){
+         printf("ID de usuario superior al máximo\n");
+         
+      }
+      //Se abre el segundo pipe
+      fd1=open("o",O_WRONLY);
+      if(fd1==-1){
+         perror("Error abriendo el segundo pipe por parte del Manager: ");
+         exit(1);
+      } 
+      write(fd1,&datosMan,sizeof(datosMan));
+   }
 }
-
-
-
-
-

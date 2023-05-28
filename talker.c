@@ -1,7 +1,7 @@
-/* 
+/*
 Autor: M. Curiel
-funcion: Ilustra la creaci'on de pipe nominales y el uso de señales 
-Nota: No todas las llamadas al sistema  estàn validadas. Deben validarlas siempre en su proyecto y cuando usen este còdigo. 
+funcion: Ilustra la creaci'on de pipe nominales y el uso de señales
+Nota: No todas las llamadas al sistema  estàn validadas. Deben validarlas siempre en su proyecto y cuando usen este còdigo.
 */
 
 #include <sys/types.h>
@@ -21,103 +21,94 @@ int fd1;
 char mensaje[TAMMENSAJE];
 typedef void (*sighandler_t)(int);
 
-sighandler_t signalHandler (void)
+sighandler_t signalHandler(void)
 {
 
-   // Este read debe ir en un manejador de señales. En su lugar el cliente va a esperar en un pause 
+   // Este read debe ir en un manejador de señales. En su lugar el cliente va a esperar en un pause
    printf("Desde el manejador:\n");
-   read(fd1,mensaje,TAMMENSAJE);
+   read(fd1, mensaje, TAMMENSAJE);
    printf("El proceso cliente termina y lee %s \n", mensaje);
-  
 }
 
-
-
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 {
-
-  int  fd, pid, creado = 0, res;
-  datap datos;
-  char nombre[TAMNOMBRE];
-  int banid=0, banpipe=0;
-   
-  mode_t fifo_mode = S_IRUSR | S_IWUSR;
-    signal (SIGUSR1,(sighandler_t) signalHandler);
-
-    if(argc!=5){
-      printf("\nEstructura de la instrucción:  %s -i IDTalker -p  NombrePipe\n",argv[0]);
-		exit(1);
-    }
-    for(int i=1;i<argc -1;i++){
-      if(strcmp(argv[i], "-i")==0){
-        printf("%d",atoi(argv[i+1]));
-         if(atoi(argv[i+1])<=0){
+   // Se declaran las variables necesarias para la comunicacion con el manager
+   int fd, pid, creado = 0, res,cuantos;
+   dataman datosMan;
+   datatalk datosTalk;
+   char nombre[TAMNOMBRE];
+   int banid = 0, banpipe = 0;
+   mode_t fifo_mode = S_IRUSR | S_IWUSR;
+   signal(SIGUSR1, (sighandler_t)signalHandler);
+   //-------------------------------------------------Validación de argumentos---------------------------------------------------------
+   // Se valida que el numero de argumentos sea el correcto
+   if (argc != 5)
+   {
+      printf("\nEstructura de la instrucción:  %s -i IDTalker -p  NombrePipe\n", argv[0]);
+      exit(1);
+   }
+   for (int i = 1; i < argc - 1; i++)
+   {
+      if (strcmp(argv[i], "-i") == 0)
+      {
+         if (atoi(argv[i + 1]) <= 0)
+         {
             printf("\nEl ID del Talker debe ser un número positivo\n");
             exit(1);
+         }
+         datosTalk.idTalker = atoi(argv[i + 1]);
+         banid = 1;
       }
-      banid=1;
-          /*
-      Asignación de id
-      */
-   }else if(strcmp(argv[i], "-p")==0){
-      if(strcmp(argv[i+1], "pipem")!=0){
-         printf("\nEl nombre del pipe debe ser el mismo del manager\n");
-         exit(1);
+      else if (strcmp(argv[i], "-p") == 0)
+      {
+         strcpy(datosTalk.nombrePipeInicial, argv[i + 1]);
+         banpipe = 1;
       }
-      banpipe=1;
-         /*
-         Asignación de nombre pipe
-         */
-    }
-    }
-    if(banid==0 || banpipe==0){
-      printf("\nEstructura de la instrucción:  $./%s -i IDTalker -p  NombrePipe\n",argv[0]);
+   }
+   if (banid == 0 || banpipe == 0)
+   {
+      printf("\nEstructura de la instrucción:  $./%s -i IDTalker -p  NombrePipe\n", argv[0]);
       exit(1);
-    }
-  // Se abre el pipe cuyo nombre se recibe como argumento del main. 
-  do { 
-     fd = open(argv[1], O_WRONLY);
-     if (fd == -1) {
-         perror("pipe");
-         printf(" Se volvera a intentar despues\n");
-	 sleep(10);        
-     } else creado = 1;
-  } while (creado == 0);
-
-
-  // Se va crear una estructura con el PID del proceso y el nombre del segundo pipe. El nombre llevarà el pid del proceso
+   }
+   //-------------------------------------------------Inicio del programa---------------------------------------------------------
+   // Se abre el pipe cuyo nombre se recibe como argumento del main.
+   fd = open(datosTalk.nombrePipeInicial, O_WRONLY);
+   if (fd == -1)
+   {
+      perror("Error abriendo pipe por parte del Talker");
+      exit(1);
+   }
+   else{
   
-  pid = getpid();
-  datos.pid = pid;
-  
-  // Nombre de un segundo pipe
-  sprintf(nombre, "proceso-%d", (int) getpid());
- 
-  strcpy(datos.segundopipe, nombre);
- 
-  // Se crea un segundo pipe para la comunicacion con el server.
-  unlink(nombre); 
-  if (mkfifo (datos.segundopipe, fifo_mode) == -1) {
-     perror("Client mkfifo:");
-     exit(1);
-  }
-  // se envia el nombre del pipe al otro proceso. 
-   write(fd, &datos , sizeof(datos));
-
-   // Se abre el segundo pipe
-   
-     if ((fd1 = open(datos.segundopipe, O_RDONLY)) == -1) {
-        perror(" Cliente  Abriendo el segundo pipe: ");
-        exit(1);
-     }  
-   
- 
-   // Se lee un mensaje por el segundo pipe. 
-  pause();
-
- 
-  exit(0);
-    
-  
+      printf("El pipe %s ha sido creado\n", datosMan.nombrePipeInicial);
+   }
+     //Crear segundo pipe para recibir la respuesta del servidor
+   unlink("o");
+   if (mkfifo("o", fifo_mode) == -1)
+   {
+      perror("Error creando pipe por parte del Talker");
+      exit(1);
+   }
+   write(fd, &datosTalk, sizeof(datosTalk));
+   printf("El proceso Talker envia el ID del talker %d y el nombre del pipe %s\n", datosTalk.idTalker, datosTalk.nombrePipeInicial);
+   if ((fd1 = open("o", O_RDONLY)) == -1)
+   {
+      perror("Error abriendo pipe por parte del Talker");
+      exit(1);
+   }
+   cuantos =read(fd1, &datosMan, sizeof(datosMan));
+   if(cuantos==-1){
+      perror("Error leyendo pipe por parte del Talker");
+      exit(1);
+   }
+   if (datosMan.numMaxUsuarios < datosTalk.idTalker)
+   {
+      printf("El ID del talker supera el número máximo de usuarios determinado por el manager\n");
+      unlink("o");
+      exit(1);
+   }else{
+          printf("Comunicación creada con éxito");
+      /*MENU*/
+      exit(0);
+   }
 }
-
