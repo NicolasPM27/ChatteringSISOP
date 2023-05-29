@@ -16,13 +16,13 @@ Nota: todas las llamadas al sistema no estan validadas. Siempre que puedan retor
 
 int main(int argc, char **argv)
 {
-   int fd, fd1, pid, n, cuantos, res, creado = 0;
+   int fd_t, fd_m, pid, n, cuantos, res, creado = 0;
    dataman datosMan;
    datatalk datosTalk;
    int bann = 0, banpipe = 0;
    mode_t fifo_mode = S_IRUSR | S_IWUSR;
-   //se crea un arreglo de estructuras de DataTalk
-   datatalk arregloTalkers[datosMan.numMaxUsuarios];
+   const char *pipet_m; // Variables que almacenan el nombre de los pipes a utilizar (Unicamente para facilitar la lectura del código)
+   const char *pipem_t;
 
    //-------------------------------------------------Validación de argumentos---------------------------------------------------------
    if (argc != 5)
@@ -64,49 +64,68 @@ int main(int argc, char **argv)
       exit(1);
    }
    //-------------------------------------------------------------Inicio del programa----------------------------------------------
+   //Inicializar variables de pipes
+   pipet_m = datosMan.nombrePipeInicial;
+   pipem_t = PIPE2;
    
    // Creacion del pipe inicial, el que se recibe como argumento del main
-   unlink(datosMan.nombrePipeInicial);
-
-   if (mkfifo(datosMan.nombrePipeInicial, fifo_mode) == -1)
+   unlink(pipet_m);
+   if(mkfifo(pipet_m, fifo_mode) == -1){
+      perror("Error creando el pipe Talker->Manager: ");
+      exit(1);
+   }
+   // Creacion del pipe secundario, para enviar datos del manager al talker  
+   unlink(pipem_t);
+   if (mkfifo(pipem_t, fifo_mode) == -1)
    {
       perror("Error creando el pipe por parte del manager");
       exit(1);
    }
-   printf("Creación del pipe '%s' exitosa con máximo %d Talkers\n", datosMan.nombrePipeInicial, datosMan.numMaxUsuarios);
 
-   //Ciclo infinito para esperar a que se conecten los Talkers
-   while(1){
-   printf("Manager esperando a que se conecte un Talker\n");
-   // Se abre el pipe
-   if((fd = open(datosMan.nombrePipeInicial,O_RDONLY))==-1){
-      perror("Error del manager al abrir el pipe: ");
+   printf("Manager iniciado y el sistema podrá tener como máximo %d usuarios\n",datosMan.numMaxUsuarios);
+
+   //*************COMUNICACIÓN TALKER->MANAGER*************
+   while(1){   //Ciclo infinito para esperar a que se conecten los Talkers
+    printf("Manager esperando a que se conecte un Talker\n");
+   //Abrir el pipe para comunicación talker->manager  
+   fd_t=open(pipet_m,O_RDONLY);
+   if(fd_t==-1){
+      perror("Error abriendo el pipe Talker->Manager: ");
       exit(1);
    }
-   cuantos = read(fd,&datosTalk,sizeof(datosTalk));
-   if(cuantos == -1){
-      perror("Error del manager leyendo el pipe: ");
+   //Leer la estructura del talker
+   cuantos=read(fd_t,&datosTalk,sizeof(datosTalk));
+   if(cuantos==-1){
+      perror("Error leyendo información enviada por el Talker: ");
       exit(1);
    }
-
-   printf ("Server lee el nombre del pipe %s\n\n", datosTalk.nombrePipeInicial);
-   printf ("Server lee el id %d\n\n", datosTalk.idTalker);
-   printf ("Server el pid %d\n\n", datosTalk.pidTalker);
+   //*************FIN COMUNICACIÓN TALKER->MANAGER*************
    
+   //*************COMUNICACIÓN MANAGER->TALKER*****************
 
-      if(datosTalk.idTalker>datosMan.numMaxUsuarios){
-         printf("ID de usuario superior al máximo\n");
-         
-      } else { //falta arreglar y revisar esto
-         datosTalk.conectado = 1;
-         arregloTalkers[datosTalk.idTalker] = datosTalk;
-      }
-      //Se abre el segundo pipe
-      fd1=open("o",O_WRONLY);
-      if(fd1==-1){
-         perror("Error abriendo el segundo pipe por parte del Manager: ");
-         exit(1);
-      } 
-      write(fd1,&datosMan,sizeof(datosMan));
+   //Abrir el pipe para comunicación manager->talker
+   fd_m=open(pipem_t,O_WRONLY);
+   if(fd_m==-1){
+      perror("Error abriendo el pipe Manager->Talker: ");
+      exit(1);
    }
+   //Enviar la estructura del manager
+   write(fd_m,&datosMan,sizeof(datosMan));
+   //*************FIN COMUNICACIÓN MANAGER->TALKER*************
+   
+   //Validación para registro Talker
+      if(datosMan.numMaxUsuarios<datosTalk.idTalker){
+         printf("ID de usuario superior al máximo\n");
+         close(fd_t);
+         close(fd_m);
+      }else {
+         printf("Talker (%d) registrado\n",datosTalk.idTalker);
+      }
+
+   
+   }
+   close(fd_m);
+   close(fd_t);
+   unlink(pipem_t);
+   unlink(pipet_m);
 }

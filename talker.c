@@ -17,7 +17,7 @@ Nota: No todas las llamadas al sistema  estàn validadas. Deben validarlas siemp
 #define TAMMENSAJE 10
 #define TAMNOMBRE 10
 
-int fd1;
+int fd_m;
 char mensaje[TAMMENSAJE];
 typedef void (*sighandler_t)(int);
 
@@ -26,20 +26,21 @@ sighandler_t signalHandler(void)
 
    // Este read debe ir en un manejador de señales. En su lugar el cliente va a esperar en un pause
    printf("Desde el manejador:\n");
-   read(fd1, mensaje, TAMMENSAJE);
+   read(fd_m, mensaje, TAMMENSAJE);
    printf("El proceso cliente termina y lee %s \n", mensaje);
 }
 
 int main(int argc, char **argv)
 {
    // Se declaran las variables necesarias para la comunicacion con el manager
-   int fd, pid, creado = 0, res, cuantos, opcion = 0;
-   bool conectado = false;
+   int fd_t, pid, creado = 0, res, cuantos;
    dataman datosMan;
    datatalk datosTalk;
    char nombre[TAMNOMBRE];
    int banid = 0, banpipe = 0;
    mode_t fifo_mode = S_IRUSR | S_IWUSR;
+   const char *pipet_m; // Variables que almacenan el nombre de los pipes a utilizar (Unicamente para facilitar la lectura del código)
+   const char *pipem_t;
    signal(SIGUSR1, (sighandler_t)signalHandler);
    //-------------------------------------------------Validación de argumentos---------------------------------------------------------
    // Se valida que el numero de argumentos sea el correcto
@@ -72,77 +73,49 @@ int main(int argc, char **argv)
       exit(1);
    }
    //-------------------------------------------------Inicio del programa---------------------------------------------------------
-   // Se abre el pipe cuyo nombre se recibe como argumento del main.
-   fd = open(datosTalk.nombrePipeInicial, O_WRONLY);
-   if (fd == -1)
+   // Inicializar variables de pipes
+   pipet_m = datosTalk.nombrePipeInicial;
+   pipem_t = PIPE2;
+
+   //*****************COMUNICACIÓN TALKER->MANAGER*****************
+   // Abrir el pipe para la comunicación Talker->Manager
+   fd_t = open(pipet_m, O_WRONLY);
+   if (fd_t == -1)
    {
-      perror("Error abriendo pipe por parte del Talker");
+      perror("Error abriendo pipe Talker->Manager: ");
       exit(1);
    }
-   else
+   // Enviar la estructura al manager
+   write(fd_t, &datosTalk, sizeof(datosTalk)); // Se envia el id del talker al manager
+
+   //*****************FIN COMUNICACIÓN TALKER->MANAGER*****************
+
+   //*****************COMUNICACIÓN MANAGER->TALKER*****************
+   // Abrir el pipe para la comunicación Manager->Talker
+   fd_m = open(pipem_t, O_RDONLY);
+   if (fd_m == -1)
    {
-      pid = getpid();
-      datosTalk.pidTalker = pid;
-      datosTalk.conectado = conectado;
-      datosTalk.opcion = opcion;
-      printf("El pipe %s ha sido creado\n", datosMan.nombrePipeInicial);
-   }
-   // Crear segundo pipe para recibir la respuesta del servidor
-   unlink("o");
-   if (mkfifo("o", fifo_mode) == -1)
-   {
-      perror("Error creando pipe por parte del Talker");
+      perror("Error abriendo pipe Manager->Talker: ");
       exit(1);
    }
-   if(write(fd, &datosTalk, sizeof(datosTalk)) == -1)
-   {
-      perror("Error escribiendo en el pipe por parte del Talker");
-      exit(1);
-   }
-   printf("El proceso Talker envia el ID del talker %d y el nombre del pipe %s\n", datosTalk.idTalker, datosTalk.nombrePipeInicial);
-   if ((fd1 = open("o", O_RDONLY)) == -1)
-   {
-      perror("Error abriendo pipe por parte del Talker");
-      exit(1);
-   }
-   cuantos = read(fd1, &datosMan, sizeof(datosMan));
+   // Leer la estructura del manager
+   cuantos = read(fd_m, &datosMan, sizeof(datosMan));
    if (cuantos == -1)
    {
-      perror("Error leyendo pipe por parte del Talker");
+      perror("Error leyendo información enviada por el Manager: ");
       exit(1);
    }
+
    if (datosMan.numMaxUsuarios < datosTalk.idTalker)
    {
-      printf("El ID del talker supera el número máximo de usuarios determinado por el manager\n");
-      unlink("o");
+      printf("El ID del talker supera el número máximo de usuarios determinado por el manager, no se puede inicializar\n");
+      close(fd_t);
       exit(1);
    }
    else
    {
-      do
-      {
-         // menu
-         printf("1. List\n");
-         printf("2. List GID\n");
-         printf("3. Group ID1, ID2, ID3, ... IDN\n");
-         printf("4. Sent msg IDi\n");
-         printf("5. Sent msg GroupID\n");
-         printf("6. Salir\n");
-         scanf("%d", &opcion);
-         switch (opcion)
-         {
-
-         case 1:
-            datosTalk.opcion = opcion;
-            if(write(fd, &datosTalk, sizeof(datosTalk)) == -1)
-            {
-               perror("Error escribiendo en el pipe por parte del Talker");
-               exit(1);
-            }
-            break;
-         }
-         
-
-      } while (opcion != 6);
+      printf("Comunicación creada con éxito");
+      printf("---MENÚ----");
    }
+   exit(0);
 }
