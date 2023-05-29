@@ -81,18 +81,16 @@ int main(int argc, char **argv)
       perror("Error creando el pipe por parte del manager");
       exit(1);
    }
-
-   printf("Manager iniciado y el sistema podrá tener como máximo %d usuarios\n",datosMan.numMaxUsuarios);
-
-   //*************COMUNICACIÓN TALKER->MANAGER*************
-   while(1){   //Ciclo infinito para esperar a que se conecten los Talkers
-    printf("Manager esperando a que se conecte un Talker\n");
-   //Abrir el pipe para comunicación talker->manager  
+     //Abrir el pipe para comunicación talker->manager  
+   printf("Manager iniciado y el sistema podrá tener como máximo %d usuarios\n",datosMan.numMaxUsuarios); 
    fd_t=open(pipet_m,O_RDONLY);
    if(fd_t==-1){
       perror("Error abriendo el pipe Talker->Manager: ");
       exit(1);
    }
+   //*************COMUNICACIÓN TALKER->MANAGER*************
+   while(1){   //Ciclo infinito para esperar a que se conecten los Talkers
+   printf("Manager esperando solicitudes del talker...\n");
    //Leer la estructura del talker
    cuantos=read(fd_t,&datosTalk,sizeof(datosTalk));
    if(cuantos==-1){
@@ -101,8 +99,11 @@ int main(int argc, char **argv)
    }
    //*************FIN COMUNICACIÓN TALKER->MANAGER*************
    
-   //*************COMUNICACIÓN MANAGER->TALKER*****************
+   switch (datosTalk.opcion)
+   {
+   case 0://Registrar al talker
 
+   //*************COMUNICACIÓN MANAGER->TALKER*****************
    //Abrir el pipe para comunicación manager->talker
    fd_m=open(pipem_t,O_WRONLY);
    if(fd_m==-1){
@@ -112,15 +113,36 @@ int main(int argc, char **argv)
    //Enviar la estructura del manager
    write(fd_m,&datosMan,sizeof(datosMan));
    //*************FIN COMUNICACIÓN MANAGER->TALKER*************
-   
    //Validación para registro Talker
       if(datosMan.numMaxUsuarios<datosTalk.idTalker){
          printf("ID de usuario superior al máximo\n");
          close(fd_t);
          close(fd_m);
       }else {
+         if(datosMan.listaConectados[datosTalk.idTalker]==1){
+            printf("ID de usuario ya registrado\n");
+            close(fd_t);
+            close(fd_m);
+         }
+         //Registrar al talker
          printf("Talker (%d) registrado\n",datosTalk.idTalker);
+         datosMan.listaConectados[datosTalk.idTalker]=1;
+         //Recibir la opción del talker
+         cuantos=read(fd_t,&datosTalk,sizeof(datosTalk));
+         if(cuantos==-1){
+            perror("Error leyendo información enviada por el Talker: ");
+            exit(1);
+         }
       }
+      break;
+   case 1: //Enviar lista de usuarios conectados
+      write(fd_m,&datosMan,sizeof(datosMan));
+      printf("Lista de usuarios enviada al talker (%d)\n",datosTalk.idTalker); 
+      break;   
+   
+   default:
+      break;
+   }
 
    
    }

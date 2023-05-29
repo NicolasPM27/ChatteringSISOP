@@ -33,7 +33,7 @@ sighandler_t signalHandler(void)
 int main(int argc, char **argv)
 {
    // Se declaran las variables necesarias para la comunicacion con el manager
-   int fd_t, pid, creado = 0, res, cuantos;
+   int fd_t, pid, creado = 0, res, cuantos, opcion;
    dataman datosMan;
    datatalk datosTalk;
    char nombre[TAMNOMBRE];
@@ -86,6 +86,8 @@ int main(int argc, char **argv)
       exit(1);
    }
    // Enviar la estructura al manager
+   datosTalk.pid = getpid();
+   datosTalk.opcion = 0;
    write(fd_t, &datosTalk, sizeof(datosTalk)); // Se envia el id del talker al manager
 
    //*****************FIN COMUNICACIÓN TALKER->MANAGER*****************
@@ -114,8 +116,48 @@ int main(int argc, char **argv)
    }
    else
    {
-      printf("Comunicación creada con éxito");
-      printf("---MENÚ----");
+      printf("Comunicación creada con éxito\n");
+      // Menú
+      do
+      {
+         printf("1. List\n");
+         printf("2. List GID\n");
+         printf("3. Group ID1, ID2, ID3, ... IDN\n");
+         printf("4. Sent msg IDi\n");
+         printf("5. Sent msg GroupID\n");
+         printf("6. Salir\n");
+         scanf("%d", &opcion);
+         datosTalk.opcion = opcion;
+         // Enviar opción
+         if (write(fd_t, &datosTalk, sizeof(datosTalk)) == -1)
+         {
+            perror("Error enviando datos: ");
+            exit(1);
+         }
+         // Recibir datos
+         cuantos = read(fd_m, &datosMan, sizeof(datosMan));
+         if (cuantos == -1)
+         {
+            perror("Error leyendo información enviada por el Manager: ");
+            exit(1);
+         }
+
+         switch (opcion)
+         {
+
+         case 1:
+            printf("Lista de usuarios conectados: \n");
+               for(int i=0;i<datosMan.numMaxUsuarios;i++){
+                 /* if(datosMan.listaConectados[i]==1){
+                     printf("ID: %d, ",i);
+                  }*/
+                  printf("(%d)ID: %d, ",i,datosMan.listaConectados[i]);
+               }
+
+            break;
+         }
+
+      } while (opcion != 6);
    }
    exit(0);
 }
