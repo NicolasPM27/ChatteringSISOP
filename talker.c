@@ -33,7 +33,7 @@ sighandler_t signalHandler(void)
 int main(int argc, char **argv)
 {
    // Se declaran las variables necesarias para la comunicacion con el manager
-   int fd_t, pid, creado = 0, res, cuantos, opcion;
+   int fd_t, pid, creado = 0, res, cuantos,opcion;
    dataman datosMan;
    datatalk datosTalk;
    char nombre[TAMNOMBRE];
@@ -41,6 +41,7 @@ int main(int argc, char **argv)
    mode_t fifo_mode = S_IRUSR | S_IWUSR;
    const char *pipet_m; // Variables que almacenan el nombre de los pipes a utilizar (Unicamente para facilitar la lectura del código)
    const char *pipem_t;
+   char input[NUMMAX];
    signal(SIGUSR1, (sighandler_t)signalHandler);
    //-------------------------------------------------Validación de argumentos---------------------------------------------------------
    // Se valida que el numero de argumentos sea el correcto
@@ -113,6 +114,11 @@ int main(int argc, char **argv)
       printf("El ID del talker supera el número máximo de usuarios determinado por el manager, no se puede inicializar\n");
       close(fd_t);
       exit(1);
+   }else
+   if(datosMan.estaregistrado==1){
+      printf("El ID del talker ya está registrado, no se puede inicializar\n");
+      close(fd_t);
+      exit(1);
    }
    else
    {
@@ -126,7 +132,22 @@ int main(int argc, char **argv)
          printf("4. Sent msg IDi\n");
          printf("5. Sent msg GroupID\n");
          printf("6. Salir\n");
-         scanf("%d", &opcion);
+         scanf("%[^\n]", &input);
+//Tokenizar
+char *tokens[NUMMAX];
+char *token = strtok(input, " ");
+//Hacer un arreglo con los tokens
+for(int i=0; token!=NULL && i<NUMMAX;i++){
+   tokens[i]=token;
+   token=strtok(NULL," ");
+}
+//Validar la opción
+   if(tokens[0]=='List'){
+      datosTalk.opcion=1;
+      opcion=1;
+      }else if(tokens [0]=='List'&& tokens[])
+}
+
          datosTalk.opcion = opcion;
          // Enviar opción
          if (write(fd_t, &datosTalk, sizeof(datosTalk)) == -1)
@@ -148,13 +169,17 @@ int main(int argc, char **argv)
          case 1:
             printf("Lista de usuarios conectados: \n");
                for(int i=0;i<datosMan.numMaxUsuarios;i++){
-                 /* if(datosMan.listaConectados[i]==1){
-                     printf("ID: %d, ",i);
-                  }*/
-                  printf("(%d)ID: %d, ",i,datosMan.listaConectados[i]);
+                  if(datosMan.listaConectados[i]==1){
+                     printf("\nID: %d, ",i);
+                  }
                }
 
             break;
+         case 2:
+         break;
+         case 3:
+
+            
          }
 
       } while (opcion != 6);

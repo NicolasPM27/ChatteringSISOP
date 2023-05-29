@@ -23,6 +23,7 @@ int main(int argc, char **argv)
    mode_t fifo_mode = S_IRUSR | S_IWUSR;
    const char *pipet_m; // Variables que almacenan el nombre de los pipes a utilizar (Unicamente para facilitar la lectura del código)
    const char *pipem_t;
+   groups grupos[NUMMAX]; 
 
    //-------------------------------------------------Validación de argumentos---------------------------------------------------------
    if (argc != 5)
@@ -110,30 +111,23 @@ int main(int argc, char **argv)
       perror("Error abriendo el pipe Manager->Talker: ");
       exit(1);
    }
-   //Enviar la estructura del manager
-   write(fd_m,&datosMan,sizeof(datosMan));
    //*************FIN COMUNICACIÓN MANAGER->TALKER*************
    //Validación para registro Talker
       if(datosMan.numMaxUsuarios<datosTalk.idTalker){
          printf("ID de usuario superior al máximo\n");
-         close(fd_t);
-         close(fd_m);
       }else {
          if(datosMan.listaConectados[datosTalk.idTalker]==1){
             printf("ID de usuario ya registrado\n");
-            close(fd_t);
-            close(fd_m);
-         }
+            datosMan.estaregistrado=1;
+         }else{
          //Registrar al talker
          printf("Talker (%d) registrado\n",datosTalk.idTalker);
          datosMan.listaConectados[datosTalk.idTalker]=1;
-         //Recibir la opción del talker
-         cuantos=read(fd_t,&datosTalk,sizeof(datosTalk));
-         if(cuantos==-1){
-            perror("Error leyendo información enviada por el Talker: ");
-            exit(1);
          }
       }
+      //Enviar la estructura del manager
+       write(fd_m,&datosMan,sizeof(datosMan));
+
       break;
    case 1: //Enviar lista de usuarios conectados
       write(fd_m,&datosMan,sizeof(datosMan));

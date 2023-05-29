@@ -5,6 +5,7 @@ typedef  struct datam {
     char nombrePipeInicial[TAMNOM];
     int numMaxUsuarios;
     int listaConectados[NUMMAX];
+    int estaregistrado;
 
 } dataman;
 typedef struct datat {
@@ -13,4 +14,8 @@ typedef struct datat {
     int pid;
     int opcion;
 } datatalk;
+typedef struct group{
+  int gid;
+  int pidUser[NUMMAX];
+}groups;
 
