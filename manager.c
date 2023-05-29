@@ -21,6 +21,8 @@ int main(int argc, char **argv)
    datatalk datosTalk;
    int bann = 0, banpipe = 0;
    mode_t fifo_mode = S_IRUSR | S_IWUSR;
+   //se crea un arreglo de estructuras de DataTalk
+   datatalk arregloTalkers[datosMan.numMaxUsuarios];
 
    //-------------------------------------------------Validación de argumentos---------------------------------------------------------
    if (argc != 5)
@@ -65,6 +67,7 @@ int main(int argc, char **argv)
    
    // Creacion del pipe inicial, el que se recibe como argumento del main
    unlink(datosMan.nombrePipeInicial);
+
    if (mkfifo(datosMan.nombrePipeInicial, fifo_mode) == -1)
    {
       perror("Error creando el pipe por parte del manager");
@@ -76,18 +79,27 @@ int main(int argc, char **argv)
    while(1){
    printf("Manager esperando a que se conecte un Talker\n");
    // Se abre el pipe
-   if((fd=open(datosMan.nombrePipeInicial,O_RDONLY))==-1){
+   if((fd = open(datosMan.nombrePipeInicial,O_RDONLY))==-1){
       perror("Error del manager al abrir el pipe: ");
       exit(1);
    }
-   cuantos=read(fd,&datosTalk,sizeof(datosTalk));
-   if(cuantos==-1){
+   cuantos = read(fd,&datosTalk,sizeof(datosTalk));
+   if(cuantos == -1){
       perror("Error del manager leyendo el pipe: ");
       exit(1);
    }
+
+   printf ("Server lee el nombre del pipe %s\n\n", datosTalk.nombrePipeInicial);
+   printf ("Server lee el id %d\n\n", datosTalk.idTalker);
+   printf ("Server el pid %d\n\n", datosTalk.pidTalker);
+   
+
       if(datosTalk.idTalker>datosMan.numMaxUsuarios){
          printf("ID de usuario superior al máximo\n");
          
+      } else { //falta arreglar y revisar esto
+         datosTalk.conectado = 1;
+         arregloTalkers[datosTalk.idTalker] = datosTalk;
       }
       //Se abre el segundo pipe
       fd1=open("o",O_WRONLY);

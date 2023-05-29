@@ -7,5 +7,8 @@ typedef  struct datam {
 typedef struct datat {
     char nombrePipeInicial[TAMNOM];
     int idTalker;
+    int pidTalker;
+    bool conectado; // 0 no conectado, 1 conectado
+    int opcion;
 } datatalk;
 
