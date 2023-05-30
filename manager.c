@@ -16,15 +16,14 @@ Nota: todas las llamadas al sistema no estan validadas. Siempre que puedan retor
 
 int main(int argc, char **argv)
 {
-   int fd_t, fd_m, pid, n, cuantos, res, creado = 0;
-   dataman datosMan;
-   datatalk datosTalk;
-   int bann = 0, banpipe = 0;
+   int fd_t, fd_m[NUMMAX], cuantos;
+   dataman datosMan;//Estructura que almacena los datos del manager
+   datatalk datosTalk;//Estructura que almacena los datos del talker
+   int bann = 0, banpipe = 0;//Variables que indican si se ingresaron los argumentos -n y -p respectivamente
    mode_t fifo_mode = S_IRUSR | S_IWUSR;
-   const char *pipet_m; // Variables que almacenan el nombre de los pipes a utilizar (Unicamente para facilitar la lectura del código)
-   const char *pipem_t;
-   groups grupos[NUMMAX];
-   int numg = 0;
+   const char *pipet_m; // Variable que almacena el nombre del pipes a utilizar (Unicamente para facilitar la lectura del código)
+   groups grupos[NUMMAX];//Arreglo de estructuras que almacena los datos de los grupos
+   int numg = 0;//Variable que almacena el número de grupos creados
 
    //-------------------------------------------------Validación de argumentos---------------------------------------------------------
    if (argc != 5)
@@ -67,21 +66,13 @@ int main(int argc, char **argv)
    }
    //-------------------------------------------------------------Inicio del programa----------------------------------------------
    // Inicializar variables de pipes
-   pipet_m = datosMan.nombrePipeInicial;
-   pipem_t = PIPE2;
+   pipet_m = datosMan.nombrePipeInicial; 
 
    // Creacion del pipe inicial, el que se recibe como argumento del main
    unlink(pipet_m);
    if (mkfifo(pipet_m, fifo_mode) == -1)
    {
       perror("Error creando el pipe Talker->Manager: ");
-      exit(1);
-   }
-   // Creacion del pipe secundario, para enviar datos del manager al talker
-   unlink(pipem_t);
-   if (mkfifo(pipem_t, fifo_mode) == -1)
-   {
-      perror("Error creando el pipe por parte del manager");
       exit(1);
    }
    // Abrir el pipe para comunicación talker->manager
@@ -94,7 +85,9 @@ int main(int argc, char **argv)
    }
    //*************COMUNICACIÓN TALKER->MANAGER*************
    while (1)
-   { // Ciclo infinito para esperar a que se conecten los Talkers
+   {
+      // datosTalk.opcion = -1;
+      // Ciclo infinito para esperar a que se conecten los Talkers
       printf("Manager esperando solicitudes del talker...\n");
       // Leer la estructura del talker
       cuantos = read(fd_t, &datosTalk, sizeof(datosTalk));
@@ -104,20 +97,28 @@ int main(int argc, char **argv)
          exit(1);
       }
       //*************FIN COMUNICACIÓN TALKER->MANAGER*************
-
+      printf("Talker %d opcion %d\n", datosTalk.idTalker, datosTalk.opcion);
       switch (datosTalk.opcion)
       {
       case 0: // Registrar al talker
+         // Crear el pipe personalizado según el pid del talker
+         char pipe_pers[20];
+         sprintf(pipe_pers, "pipe%d", datosTalk.pid);
+         unlink(pipe_pers);
+         if (mkfifo(pipe_pers, fifo_mode) == -1)
+         {
+            perror("Error creando el pipe personalizado: ");
+            exit(1);
+         }
 
-         //*************COMUNICACIÓN MANAGER->TALKER*****************
          // Abrir el pipe para comunicación manager->talker
-         fd_m = open(pipem_t, O_WRONLY);
-         if (fd_m == -1)
+         fd_m[datosTalk.idTalker] = open(pipe_pers, O_WRONLY);
+         if (fd_m[datosTalk.idTalker] == -1)
          {
             perror("Error abriendo el pipe Manager->Talker: ");
             exit(1);
          }
-         //*************FIN COMUNICACIÓN MANAGER->TALKER*************
+         printf("%d,%s", fd_m[datosTalk.idTalker], pipe_pers);
          // Validación para registro Talker
          if (datosMan.numMaxUsuarios < datosTalk.idTalker)
          {
@@ -133,46 +134,88 @@ int main(int argc, char **argv)
             else
             {
                // Registrar al talker
-               printf("Talker (%d) registrado con pid %d\n", datosTalk.idTalker, datosTalk.pid);
+               printf("Talker (%d) registrado con pid %d y fd%d\n", datosTalk.idTalker, datosTalk.pid, fd_m[datosTalk.idTalker]);
                datosMan.listaConectados[datosTalk.idTalker] = datosTalk.pid;
                datosMan.registrados[datosTalk.idTalker] = 1;
             }
          }
          // Enviar la estructura del manager
-         write(fd_m, &datosMan, sizeof(datosMan));
-
+         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          break;
       case 1: // Enviar lista de usuarios conectados
-         write(fd_m, &datosMan, sizeof(datosMan));
+         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          printf("Lista de usuarios enviada al talker (%d)\n", datosTalk.idTalker);
          break;
       case 2:
+         printf("Talker %d solicita los integrantes del grupo G%d", datosTalk.idTalker,datosTalk.grupoAListar);
+         // Comprobar que el grupo existe
+         if(grupos[datosTalk.grupoAListar-1].gid != datosTalk.grupoAListar){
+            printf("El grupo %d no existe\n",datosTalk.grupoAListar);
+            datosMan.grupocreado = 0;
+         }else{
+            printf("El grupo G%d existe, se envian los integrantes al talker %d\n",datosTalk.grupoAListar,datosTalk.idTalker);
+            datosMan.grupocreado = 1;
+           datosMan.numintegrantes=grupos[datosTalk.grupoAListar-1].numintegrantes;
+           for(int i=0;i<datosMan.numintegrantes;i++){
+            datosMan.usuariosXGrupo[i]=grupos[datosTalk.grupoAListar-1].idUser[i];
+           }
+         }
+         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          break;
       case 3:
-         grupos[numg].gid = numg + 1; //Asigna el id del grupo
+         printf("Talker %d solicita cración de grupo con talkers ", datosTalk.idTalker);
+         for (int i = 0; i < datosTalk.numintegrantes; i++)
+         {
+            printf("%d,", datosTalk.idsgrupos[i]);
+         }
+         printf("\n");
+         // Comprobar que los talkers existen
+         datosMan.grupocreado = 1;
+         for (int i = 0; i < datosTalk.numintegrantes; i++)
+         { // Recorre el arreglo de registrados y cuenta los que están registrados
+            if (datosMan.registrados[datosTalk.idsgrupos[i]] != 1)
+            {
+               printf("No se puede crear el grupo %d porque no todos los talkers existen\n", numg + 1);
+               datosMan.grupocreado = 0;
+               write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+               break;
+            }
+         }
+         if(datosMan.grupocreado == 0){//Break para salir del switch
+            break;
+         }
+         // Crear el grupo
+         grupos[numg].numintegrantes = datosTalk.numintegrantes; // Asigna el número de integrantes
+         grupos[numg].gid = numg + 1; // Asigna el id del grupo
 
-         grupos[numg].pidUser[0] = datosTalk.idTalker;//Asigna el id del talker que crea el grupo
+         grupos[numg].idUser[0] = datosTalk.idTalker; // Asigna el id del talker que crea el grupo
 
          for (int i = 0; i < datosTalk.numintegrantes; i++)
          {
-            grupos[numg].pidUser[i+1] = datosTalk.idsgrupos[i]; //Asigna los id de los talkers que se unen al grupo
+            grupos[numg].idUser[i + 1] = datosTalk.idsgrupos[i]; // Asigna los id de los talkers que se unen al grupo
          }
-         char mensaje[TAMMENSAJE] ;
+         char mensaje[TAMMENSAJE];
          sprintf(mensaje, "Talker forma parte del grupo %d", grupos[numg].gid);
-         write(fd_m,mensaje,strlen(mensaje));
-         printf("Grupo creado\n");
-         sleep(2);
-         for(int i=0;i<datosTalk.numintegrantes;i++){//Numintegrantes sin el id del que crea el grupo
-            kill(datosMan.listaConectados[grupos[numg].pidUser[i]],SIGUSR1);
-         }         
+         for (int i = 0; i < datosTalk.numintegrantes; i++)//Numintegrantes no cuenta el integrante que crea el grupo
+         {                                                                          // Numintegrantes sin el id del que crea el grupo
+            int proccessid = datosMan.listaConectados[grupos[numg].idUser[i + 1]]; // Se le suma uno porque la primera posición corresponde al que mandó el mensaje
+            write(fd_m[grupos[numg].idUser[i + 1]], mensaje, sizeof(mensaje));
+            printf("Enviando mensaje por pipe %d", fd_m[grupos[numg].idUser[i + 1]]);
+            sleep(1);
+            printf("Enviando señal SIGUSR1 a %d\n", proccessid);
+            kill(proccessid, SIGUSR1);
+         }
+         datosMan.grupocreado = 1;
+         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+         printf("Se crea el grupo con identificador G%d\n", numg + 1);
          numg++;
-      break;
-   default:
-      break;
+
+         break;
+      default:
+         break;
+      }
    }
-}
-close(fd_m);
-close(fd_t);
-unlink(pipem_t);
-unlink(pipet_m);
+   // close(fd_m);
+   close(fd_t);
+   unlink(pipet_m);
 }

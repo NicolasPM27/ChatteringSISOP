@@ -8,6 +8,9 @@ typedef  struct datam {
     int listaConectados[NUMMAX];//Pid de los usuarios conectados
     int registrados[NUMMAX];//0 no registrado, 1 registrado
     int estaregistrado;
+    int usuariosXGrupo[NUMMAX];//Numero de usuarios por grupo
+    int numintegrantes;
+    int grupocreado;//0 no creado, 1 creado
 
 } dataman;
 typedef struct datat {
@@ -17,9 +20,11 @@ typedef struct datat {
     int opcion;
     int idsgrupos[NUMMAX];
     int numintegrantes;
+    int grupoAListar;
 } datatalk;
 typedef struct group{
   int gid;
-  int pidUser[NUMMAX];
+  int numintegrantes;
+  int idUser[NUMMAX];
 }groups;
 
