@@ -17,13 +17,13 @@ Nota: todas las llamadas al sistema no estan validadas. Siempre que puedan retor
 int main(int argc, char **argv)
 {
    int fd_t, fd_m[NUMMAX], cuantos;
-   dataman datosMan;//Estructura que almacena los datos del manager
-   datatalk datosTalk;//Estructura que almacena los datos del talker
-   int bann = 0, banpipe = 0;//Variables que indican si se ingresaron los argumentos -n y -p respectivamente
+   dataman datosMan;          // Estructura que almacena los datos del manager
+   datatalk datosTalk;        // Estructura que almacena los datos del talker
+   int bann = 0, banpipe = 0; // Variables que indican si se ingresaron los argumentos -n y -p respectivamente
    mode_t fifo_mode = S_IRUSR | S_IWUSR;
-   const char *pipet_m; // Variable que almacena el nombre del pipes a utilizar (Unicamente para facilitar la lectura del código)
-   groups grupos[NUMMAX];//Arreglo de estructuras que almacena los datos de los grupos
-   int numg = 0;//Variable que almacena el número de grupos creados
+   const char *pipet_m;   // Variable que almacena el nombre del pipes a utilizar (Unicamente para facilitar la lectura del código)
+   groups grupos[NUMMAX]; // Arreglo de estructuras que almacena los datos de los grupos
+   int numg = 0;          // Variable que almacena el número de grupos creados
 
    //-------------------------------------------------Validación de argumentos---------------------------------------------------------
    if (argc != 5)
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
    }
    //-------------------------------------------------------------Inicio del programa----------------------------------------------
    // Inicializar variables de pipes
-   pipet_m = datosMan.nombrePipeInicial; 
+   pipet_m = datosMan.nombrePipeInicial;
 
    // Creacion del pipe inicial, el que se recibe como argumento del main
    unlink(pipet_m);
@@ -135,30 +135,34 @@ int main(int argc, char **argv)
             {
                // Registrar al talker
                printf("Talker (%d) registrado con pid %d y fd%d\n", datosTalk.idTalker, datosTalk.pid, fd_m[datosTalk.idTalker]);
-               datosMan.listaConectados[datosTalk.idTalker] = datosTalk.pid;
+               datosMan.listaConectados[datosTalk.idTalker] = datosTalk.pid; // Se almacena el pid del talker en la lista de conectados, en la posición que corresponde al id del talker
                datosMan.registrados[datosTalk.idTalker] = 1;
             }
          }
          // Enviar la estructura del manager
          write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          break;
-      case 1: // Enviar lista de usuarios conectados
-         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+      case 1:                                                          // Enviar lista de usuarios conectados
+         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan)); // se le envia al talker que pidió la lista de usuarios la estructura del manager
          printf("Lista de usuarios enviada al talker (%d)\n", datosTalk.idTalker);
          break;
       case 2:
-         printf("Talker %d solicita los integrantes del grupo G%d", datosTalk.idTalker,datosTalk.grupoAListar);
+         printf("Talker %d solicita los integrantes del grupo G%d", datosTalk.idTalker, datosTalk.grupoAListar);
          // Comprobar que el grupo existe
-         if(grupos[datosTalk.grupoAListar-1].gid != datosTalk.grupoAListar){
-            printf("El grupo %d no existe\n",datosTalk.grupoAListar);
+         if (grupos[datosTalk.grupoAListar - 1].gid != datosTalk.grupoAListar)
+         {
+            printf("El grupo %d no existe\n", datosTalk.grupoAListar);
             datosMan.grupocreado = 0;
-         }else{
-            printf("El grupo G%d existe, se envian los integrantes al talker %d\n",datosTalk.grupoAListar,datosTalk.idTalker);
+         }
+         else
+         {
+            printf("El grupo G%d existe, se envian los integrantes al talker %d\n", datosTalk.grupoAListar, datosTalk.idTalker);
             datosMan.grupocreado = 1;
-           datosMan.numintegrantes=grupos[datosTalk.grupoAListar-1].numintegrantes;
-           for(int i=0;i<datosMan.numintegrantes;i++){
-            datosMan.usuariosXGrupo[i]=grupos[datosTalk.grupoAListar-1].idUser[i];
-           }
+            datosMan.numintegrantes = grupos[datosTalk.grupoAListar - 1].numintegrantes;
+            for (int i = 0; i < datosMan.numintegrantes; i++)
+            {
+               datosMan.usuariosXGrupo[i] = grupos[datosTalk.grupoAListar - 1].idUser[i];
+            }
          }
          write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          break;
@@ -181,12 +185,13 @@ int main(int argc, char **argv)
                break;
             }
          }
-         if(datosMan.grupocreado == 0){//Break para salir del switch
+         if (datosMan.grupocreado == 0)
+         { // Break para salir del switch
             break;
          }
          // Crear el grupo
          grupos[numg].numintegrantes = datosTalk.numintegrantes; // Asigna el número de integrantes
-         grupos[numg].gid = numg + 1; // Asigna el id del grupo
+         grupos[numg].gid = numg + 1;                            // Asigna el id del grupo
 
          grupos[numg].idUser[0] = datosTalk.idTalker; // Asigna el id del talker que crea el grupo
 
@@ -196,13 +201,13 @@ int main(int argc, char **argv)
          }
          char mensaje[TAMMENSAJE];
          sprintf(mensaje, "Talker forma parte del grupo %d", grupos[numg].gid);
-         for (int i = 0; i < datosTalk.numintegrantes; i++)//Numintegrantes no cuenta el integrante que crea el grupo
-         {                                                                          // Numintegrantes sin el id del que crea el grupo
+         for (int i = 0; i < datosTalk.numintegrantes; i++)                        // Numintegrantes no cuenta el integrante que crea el grupo
+         {                                                                         // Numintegrantes sin el id del que crea el grupo
             int proccessid = datosMan.listaConectados[grupos[numg].idUser[i + 1]]; // Se le suma uno porque la primera posición corresponde al que mandó el mensaje
             write(fd_m[grupos[numg].idUser[i + 1]], mensaje, sizeof(mensaje));
             printf("Enviando mensaje por pipe %d", fd_m[grupos[numg].idUser[i + 1]]);
             sleep(1);
-            printf("Enviando señal SIGUSR1 a %d\n", proccessid);
+            printf("\nEnviando señal SIGUSR1 a %d\n", proccessid);
             kill(proccessid, SIGUSR1);
          }
          datosMan.grupocreado = 1;
@@ -211,6 +216,49 @@ int main(int argc, char **argv)
          numg++;
 
          break;
+      case 4:
+         char mensajeEnviar[TAMMENSAJE*2];
+         sprintf(mensajeEnviar, "%s enviado por %d", datosTalk.mensaje, datosTalk.idTalker);
+         // revisar si el usuario está conectado actualmente
+         if (datosMan.listaConectados[datosTalk.idDestino] != 0 && datosMan.registrados[datosTalk.idDestino] == 1)
+         {
+            // significa que el usuario está conectado
+            // enviar mensaje
+            datosMan.mensajeenviado = 1;
+            int proccessid = datosMan.listaConectados[datosTalk.idDestino]; // Se le suma uno porque la primera posición corresponde al que mandó el mensaje
+            write(fd_m[datosTalk.idDestino], mensajeEnviar, sizeof(mensajeEnviar));
+            printf("Enviando mensaje por pipe %d", fd_m[datosTalk.idDestino]);
+            sleep(1);
+            printf("\nEnviando señal SIGUSR1 a %d\n", proccessid);
+            kill(proccessid, SIGUSR1);
+         }
+         datosMan.mensajeenviado = 1;
+         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+         printf("Se envía el mensaje %s al talker %d\n", datosTalk.mensaje, datosTalk.idDestino);
+         break;
+         
+         case 5:
+         char mensajeEnviarGrupo[TAMMENSAJE*2];
+         //limpiarBuffer(mensajeEnviarGrupo);
+         sprintf(mensajeEnviarGrupo, "%s enviado por %d", datosTalk.mensaje, datosTalk.idTalker);
+         // revisar si el grupo existe
+         if (grupos[datosTalk.idDestino-1].numintegrantes != 0){ //El grupo existe
+            // enviar mensaje
+            for(int i = 0; i < grupos[datosTalk.idDestino-1].numintegrantes+1; i++){
+               int proccessid = datosMan.listaConectados[grupos[datosTalk.idDestino-1].idUser[i]]; // Se le suma uno porque la primera posición corresponde al que mandó el mensaje
+               write(fd_m[grupos[datosTalk.idDestino-1].idUser[i]], mensajeEnviarGrupo, sizeof(mensajeEnviarGrupo));
+               printf("Enviando mensaje por pipe %d", fd_m[grupos[datosTalk.idDestino-1].idUser[i]]);
+               sleep(1);
+               printf("\nEnviando señal SIGUSR1 a %d\n", proccessid);
+               kill(proccessid, SIGUSR1);
+            }
+            datosMan.mensajeenviadogrupo = 1;
+            write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+            printf("Se envía el mensaje %s al grupo G%d\n", datosTalk.mensaje, datosTalk.idDestino);
+
+         }
+         
+         break;
       default:
          break;
       }
@@ -218,4 +266,14 @@ int main(int argc, char **argv)
    // close(fd_m);
    close(fd_t);
    unlink(pipet_m);
+}
+
+void limpiarBuffer(char *texto) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {
+        // Descartar los caracteres restantes en el buffer
+    }
+    if (texto != NULL) {
+        texto[0] = '\0';  // Limpiar el contenido del texto
+    }
 }
