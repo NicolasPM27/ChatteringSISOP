@@ -96,7 +96,6 @@ int main(int argc, char **argv)
    sleep(1);
    char pipe_pers[20];
    sprintf(pipe_pers, "pipe%d", getpid());
-   printf("%s", pipe_pers);
    fd_m = open(pipe_pers, O_RDONLY);
    if (fd_m == -1)
    {
@@ -176,18 +175,14 @@ int main(int argc, char **argv)
             datosTalk.opcion = 3;
             datosTalk.idsgrupos[0] = datosTalk.idTalker;
             datosTalk.numintegrantes = 1;
-            printf("Integrantess: %d\n", datosTalk.numintegrantes);
             for (int i = 1; i < NUMMAX && tokens[i] != NULL && tokens[i][0] != '\0'; i++)
             {
                if (tokens[i] != NULL && tokens[i][0] != '\0' && strcmp(tokens[i], " ") != 0)
                {
                   datosTalk.idsgrupos[i] = atoi(tokens[i]);
-                  printf("(%d)%s", datosTalk.numintegrantes, tokens[i]);
                   datosTalk.numintegrantes++;
                }
             }
-
-            printf("antagrantes:%d", datosTalk.numintegrantes);
          }
          else if (strcmp(tokens[0], "Sent") == 0 && tokens[1] != NULL && tokens[2] != NULL) // Opcion 4 y 5
          {                                                                                  // Enviar mensaje a un usuario o grupo
@@ -201,65 +196,85 @@ int main(int argc, char **argv)
                datosTalk.idDestino = idDest;
                strcpy(datosTalk.mensaje, tokens[1]);
             }
-               else
-               {
-                  datosTalk.opcion = 4;
-                  datosTalk.idDestino = atoi(tokens[2]);
-                  strcpy(datosTalk.mensaje, tokens[1]);
-               }
-            }
-            else if (strcmp(tokens[0], "Salir") == 0) // Opcion 6
-            {                                         // Salir
-               datosTalk.opcion = 6;
-            }
             else
             {
-               printf("Opción no válida\n");
+               datosTalk.opcion = 4;
+               datosTalk.idDestino = atoi(tokens[2]);
+               strcpy(datosTalk.mensaje, tokens[1]);
             }
-            //**********************************-Se envían los datos del datatalker y se reciben los datos del manager-********************************************
-            // Enviar opción
-            if (write(fd_t, &datosTalk, sizeof(datosTalk)) == -1)
-            {
-               perror("Error enviando datos: ");
-               exit(1);
-            }
-            else
-               printf("Integrantes: %d\n", datosTalk.numintegrantes);
+         }
+         else if (strcmp(tokens[0], "Salir") == 0) // Opcion 6
+         {                                         // Salir
+            datosTalk.opcion = 6;
+         }
+         else
+         {
+            printf("Opción no válida\n");
+         }
+         //**********************************-Se envían los datos del datatalker y se reciben los datos del manager-********************************************
+         // Enviar opción
+         if (write(fd_t, &datosTalk, sizeof(datosTalk)) == -1)
+         {
+            perror("Error enviando datos: ");
+            exit(1);
+         }
+         else
+         {
             printf("Opcion %d enviada\n", datosTalk.opcion);
             // Recibir datos
-
-            cuantos = read(fd_m, &datosMan, sizeof(datosMan));
-            if (cuantos == -1)
+            if (datosTalk.opcion == 1)
             {
-               perror("Error leyendo información enviada por el Manager: ");
-               exit(1);
-            }
-            if (datosTalk.opcion == 2)
-            {
-               if (datosMan.grupocreado == 0)
+               cuantos = read(fd_m, &datosMan, sizeof(datosMan));
+               if (cuantos == -1)
                {
-                  printf("No existe el grupo G%d", datosTalk.grupoAListar + 1);
+                  perror("Error leyendo información enviada por el Manager: ");
+                  exit(1);
                }
-               else
-                  printf("Grupo G%d:\n", datosTalk.grupoAListar + 1);
-               for (int i = 0; i < datosTalk.numintegrantes; i++)
+            }
+            else if (datosTalk.opcion == 2 || datosTalk.opcion == 3)
+            {
+               //Espera ocupada
+               while (datosMan.grupocreado != -1)
                {
-                  printf("%d,", datosMan.usuariosXGrupo[i]);
+                  cuantos = read(fd_m, &datosMan, sizeof(datosMan));
+               }
+               if (datosTalk.opcion == 2)
+               {
+                  if (datosMan.grupocreado == 0)
+                  {
+                     printf("No existe el grupo G%d", datosTalk.grupoAListar + 1);
+                  }
+                  else
+                     printf("Grupo G%d:\n", datosTalk.grupoAListar + 1);
+                  for (int i = 0; i < datosTalk.numintegrantes; i++)
+                  {
+                     printf("%d,", datosMan.usuariosXGrupo[i]);
+                  }
+                  printf("\n");
+               }
+               else if (datosTalk.opcion == 3)
+               {
+                  if (datosMan.grupocreado == 0)
+                     printf("No se pudo crear el grupo\n");
+                  else
+                     printf("Grupo creado con exito\n");
                }
             }
             else if (datosTalk.opcion == 3)
             {
-               if (datosMan.grupocreado == 0)
-                  printf("No se pudo crear el grupo\n");
-               else
-                  printf("Grupo creado con exito\n");
             }
             else if (datosTalk.opcion == 4)
             {
-               if(datosMan.mensajeenviado==0)
-               printf("No se pudo enviar el mensaje\n");
+            }
+            else if (datosTalk.opcion == 5)
+            {
+            }
+            else if (datosTalk.opcion == 4)
+            {
+               if (datosMan.mensajeenviado == 0)
+                  printf("No se pudo enviar el mensaje\n");
                else
-               printf("Mensaje enviado con exito\n");
+                  printf("Mensaje enviado con exito\n");
             }
             else if (datosTalk.opcion == 5)
             {
@@ -269,8 +284,8 @@ int main(int argc, char **argv)
                   printf("Mensaje enviado con exito\n");
             }
          }
-         while (datosTalk.opcion != 6)
-            ;
-      }
+      }while (datosTalk.opcion != 6);
       exit(0);
    }
+}
+

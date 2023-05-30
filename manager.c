@@ -1,4 +1,4 @@
-/*
+/*a
 Autor: M. Curiel
 funcion: Ilustra la creaci'on de pipe nominales.
 Nota: todas las llamadas al sistema no estan validadas. Siempre que puedan retornar error deben validarse
@@ -97,7 +97,6 @@ int main(int argc, char **argv)
          exit(1);
       }
       //*************FIN COMUNICACIÓN TALKER->MANAGER*************
-      printf("Talker %d opcion %d\n", datosTalk.idTalker, datosTalk.opcion);
       switch (datosTalk.opcion)
       {
       case 0: // Registrar al talker
@@ -118,7 +117,6 @@ int main(int argc, char **argv)
             perror("Error abriendo el pipe Manager->Talker: ");
             exit(1);
          }
-         printf("%d,%s", fd_m[datosTalk.idTalker], pipe_pers);
          // Validación para registro Talker
          if (datosMan.numMaxUsuarios < datosTalk.idTalker)
          {
@@ -137,13 +135,15 @@ int main(int argc, char **argv)
                printf("Talker (%d) registrado con pid %d y fd%d\n", datosTalk.idTalker, datosTalk.pid, fd_m[datosTalk.idTalker]);
                datosMan.listaConectados[datosTalk.idTalker] = datosTalk.pid; // Se almacena el pid del talker en la lista de conectados, en la posición que corresponde al id del talker
                datosMan.registrados[datosTalk.idTalker] = 1;
+               datosMan.grupocreado=-1;
+               
             }
          }
          // Enviar la estructura del manager
-         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+         //write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          break;
       case 1:                                                          // Enviar lista de usuarios conectados
-         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan)); // se le envia al talker que pidió la lista de usuarios la estructura del manager
+        // write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan)); // se le envia al talker que pidió la lista de usuarios la estructura del manager
          printf("Lista de usuarios enviada al talker (%d)\n", datosTalk.idTalker);
          break;
       case 2:
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
                datosMan.usuariosXGrupo[i] = grupos[datosTalk.grupoAListar - 1].idUser[i];
             }
          }
-         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+        // write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          break;
       case 3:
          printf("Talker %d solicita cración de grupo con talkers ", datosTalk.idTalker);
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
             {
                printf("No se puede crear el grupo %d porque no todos los talkers existen\n", numg + 1);
                datosMan.grupocreado = 0;
-               write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+               //write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
                break;
             }
          }
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
             kill(proccessid, SIGUSR1);
          }
          datosMan.grupocreado = 1;
-         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+        // write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          printf("Se crea el grupo con identificador G%d\n", numg + 1);
          numg++;
 
@@ -233,7 +233,7 @@ int main(int argc, char **argv)
             kill(proccessid, SIGUSR1);
          }
          datosMan.mensajeenviado = 1;
-         write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+         //write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
          printf("Se envía el mensaje %s al talker %d\n", datosTalk.mensaje, datosTalk.idDestino);
          break;
          
@@ -253,7 +253,7 @@ int main(int argc, char **argv)
                kill(proccessid, SIGUSR1);
             }
             datosMan.mensajeenviadogrupo = 1;
-            write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+            //write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
             printf("Se envía el mensaje %s al grupo G%d\n", datosTalk.mensaje, datosTalk.idDestino);
 
          }
@@ -262,6 +262,8 @@ int main(int argc, char **argv)
       default:
          break;
       }
+      write(fd_m[datosTalk.idTalker], &datosMan, sizeof(datosMan));
+
    }
    // close(fd_m);
    close(fd_t);
