@@ -14,7 +14,6 @@ Nota: No todas las llamadas al sistema  estàn validadas. Deben validarlas siemp
 #include <signal.h>
 #include "nom.h"
 
-#define TAMMENSAJE 10
 #define TAMNOMBRE 10
 
 int fd_m;
@@ -25,7 +24,6 @@ sighandler_t signalHandler(void)
 {
 
    // Este read debe ir en un manejador de señales. En su lugar el cliente va a esperar en un pause
-   printf("Desde el manejador:\n");
    read(fd_m, mensaje, sizeof(mensaje));
    printf("%s \n", mensaje);
 }

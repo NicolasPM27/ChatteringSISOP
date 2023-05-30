@@ -149,31 +149,23 @@ int main(int argc, char **argv)
       case 2:
          break;
       case 3:
-         grupos[numg].gid = numg + 1;
-         grupos[numg].pidUser[0] = datosTalk.idTalker;
+         grupos[numg].gid = numg + 1; //Asigna el id del grupo
+
+         grupos[numg].pidUser[0] = datosTalk.idTalker;//Asigna el id del talker que crea el grupo
+
          for (int i = 0; i < datosTalk.numintegrantes; i++)
          {
-            grupos[numg ].pidUser[i+1] = datosTalk.idsgrupos[i];
+            grupos[numg].pidUser[i+1] = datosTalk.idsgrupos[i]; //Asigna los id de los talkers que se unen al grupo
          }
-         printf("%d",datosTalk.numintegrantes);
-         /*for (int i = 0; i < datosTalk.numintegrantes; i++)
-         {
-            printf("[%d](%d)\n", grupos[0].gid, datosMan.listaConectados[grupos[numg].pidUser[i]]);
-         }*/
-         printf("dmkln");
-         char* mensaje ;
+         char mensaje[TAMMENSAJE] ;
          sprintf(mensaje, "Talker forma parte del grupo %d", grupos[numg].gid);
-         write(fd_m,mensaje,sizeof(mensaje));
-      printf("Grupo creado\n");
+         write(fd_m,mensaje,strlen(mensaje));
+         printf("Grupo creado\n");
          sleep(2);
-         printf("a");
          for(int i=0;i<datosTalk.numintegrantes;i++){//Numintegrantes sin el id del que crea el grupo
             kill(datosMan.listaConectados[grupos[numg].pidUser[i]],SIGUSR1);
-         }
-         printf("b");
-         
+         }         
          numg++;
-      
       break;
    default:
       break;
