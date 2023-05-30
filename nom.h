@@ -4,7 +4,8 @@
 typedef  struct datam {
     char nombrePipeInicial[TAMNOM];
     int numMaxUsuarios;
-    int listaConectados[NUMMAX];
+    int listaConectados[NUMMAX];//Pid de los usuarios conectados
+    int registrados[NUMMAX];//0 no registrado, 1 registrado
     int estaregistrado;
 
 } dataman;
@@ -13,6 +14,8 @@ typedef struct datat {
     int idTalker;
     int pid;
     int opcion;
+    int idsgrupos[NUMMAX];
+    int numintegrantes;
 } datatalk;
 typedef struct group{
   int gid;

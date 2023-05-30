@@ -26,14 +26,14 @@ sighandler_t signalHandler(void)
 
    // Este read debe ir en un manejador de señales. En su lugar el cliente va a esperar en un pause
    printf("Desde el manejador:\n");
-   read(fd_m, mensaje, TAMMENSAJE);
-   printf("El proceso cliente termina y lee %s \n", mensaje);
+   read(fd_m, mensaje, sizeof(mensaje));
+   printf("%s \n", mensaje);
 }
 
 int main(int argc, char **argv)
 {
    // Se declaran las variables necesarias para la comunicacion con el manager
-   int fd_t, pid, creado = 0, res, cuantos,opcion;
+   int fd_t, pid, creado = 0, res, cuantos, opcion;
    dataman datosMan;
    datatalk datosTalk;
    char nombre[TAMNOMBRE];
@@ -114,8 +114,9 @@ int main(int argc, char **argv)
       printf("El ID del talker supera el número máximo de usuarios determinado por el manager, no se puede inicializar\n");
       close(fd_t);
       exit(1);
-   }else
-   if(datosMan.estaregistrado==1){
+   }
+   else if (datosMan.estaregistrado == 1)
+   {
       printf("El ID del talker ya está registrado, no se puede inicializar\n");
       close(fd_t);
       exit(1);
@@ -133,20 +134,69 @@ int main(int argc, char **argv)
          printf("5. Sent msg GroupID\n");
          printf("6. Salir\n");
          scanf("%[^\n]", &input);
-//Tokenizar
-char *tokens[NUMMAX];
-char *token = strtok(input, " ");
-//Hacer un arreglo con los tokens
-for(int i=0; token!=NULL && i<NUMMAX;i++){
-   tokens[i]=token;
-   token=strtok(NULL," ");
-}
-//Validar la opción
-   if(tokens[0]=='List'){
-      datosTalk.opcion=1;
-      opcion=1;
-      }else if(tokens [0]=='List'&& tokens[])
-}
+         // Tokenizar
+         char *tokens[NUMMAX];
+         char *token = strtok(input, " ");
+         // Hacer un arreglo con los tokens
+         for (int i = 0; token != NULL && i < NUMMAX; i++)
+         {
+            tokens[i] = token;
+            token = strtok(NULL, " ");
+         }
+         getchar();// Limpiar el buffer
+
+         // Validar la opción
+         if (strcmp(tokens[0], "List") == 0 && tokens[1] == NULL)
+         { // Listar todos los usuarios
+            datosTalk.opcion = 1;
+
+            printf("Lista de usuarios conectados: \n");
+            for (int i = 0; i < datosMan.numMaxUsuarios; i++)
+            {
+               if (datosMan.registrados[i] == 1)
+               {
+                  printf("\nID: %d, ", i);
+               }
+            }
+         }
+         else if (strcmp(tokens[0], "List") == 0 && tokens[1] != NULL)
+         { // Listar usuarios de un grupo
+            datosTalk.opcion = 2;
+            opcion = 2;
+         }
+         else if (strcmp(tokens[0], "Group") == 0 && tokens[1] != NULL)
+         { // Crear un grupo
+            datosTalk.opcion = 3;
+            opcion = 3;
+            datosTalk.numintegrantes=0;
+            for(int i=0;i<NUMMAX&&tokens[i+1]!=NULL;i++){
+               if(tokens[i+1]!=NULL){
+                  datosTalk.idsgrupos[i]=atoi(tokens[i+1]);
+                  datosTalk.numintegrantes++;
+               }
+            }
+            //Enviar ids 
+            if(write(fd_t, &datosTalk, sizeof(datosTalk))==-1){
+               perror("Error enviando datos: ");
+               exit(1);
+            }
+
+         }
+         else if (strcmp(tokens[0], "Sent") == 0 && tokens[1] != NULL && tokens[2] != NULL)
+         { // Enviar mensaje a un usuario o grupo
+            datosTalk.opcion = 4;
+            opcion = 4;
+         }
+         else if (strcmp(tokens[0], "Salir") == 0)
+         { // Salir
+            datosTalk.opcion = 6;
+            opcion = 6;
+         }
+         else
+         {
+            printf("Opción no válida\n");
+            opcion = 0;
+         }
 
          datosTalk.opcion = opcion;
          // Enviar opción
@@ -162,27 +212,7 @@ for(int i=0; token!=NULL && i<NUMMAX;i++){
             perror("Error leyendo información enviada por el Manager: ");
             exit(1);
          }
-
-         switch (opcion)
-         {
-
-         case 1:
-            printf("Lista de usuarios conectados: \n");
-               for(int i=0;i<datosMan.numMaxUsuarios;i++){
-                  if(datosMan.listaConectados[i]==1){
-                     printf("\nID: %d, ",i);
-                  }
-               }
-
-            break;
-         case 2:
-         break;
-         case 3:
-
-            
-         }
-
-      } while (opcion != 6);
+      }while(opcion != 6);
    }
-   exit(0);
-}
+      exit(0);
+   }
